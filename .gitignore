@@ -1,0 +1,61 @@
+### Vue.js (Vite/Nuxt) ###
+# Dependency directories
+node_modules/
+.pnpm-store/
+
+# Build files
+dist/
+.temp/
+.cache/
+*.local
+
+# Environment files (except template)
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor/IDE
+.idea/
+.vscode/
+*.suo
+*.user
+*.sln.iml
+
+### .NET ###
+# Build outputs
+bin/
+obj/
+
+# NuGet packages
+.nuget/
+*.nupkg
+
+# Local runtime files
+*.userprefs
+*.runtimeconfig.json
+
+# Rider/ReSharper
+_ReSharper.*/
+*.sln.ide
+
+# VS Code (C# extension)
+.vs/
+launch.json
+tasks.json
+
+### macOS ###
+.DS_Store
+._*
+
+### Common ###
+*.log
+*.swp
+*.swo
+
+*.db
