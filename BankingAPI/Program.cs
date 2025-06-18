@@ -34,8 +34,17 @@ builder.Services.Configure<Microsoft.AspNetCore.Mvc.JsonOptions>(options =>
 {
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
+var corsPolicyName = "AllowFrontend";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: corsPolicyName, policy =>
+    {
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
 
+    });
+});
 var app = builder.Build();
+app.UseCors(corsPolicyName);
 
 // Enable Swagger UI in development
 if (app.Environment.IsDevelopment())
