@@ -25,7 +25,7 @@ const INTEREST_PAYOUT_SCHEDULES = {
   2: "At Maturity",
 };
 
-const CURRENCY_CODES = ['BGN', 'EUR', 'USD', 'GBP', 'CHF']; // Common currency codes
+const CURRENCY_CODES = ['BGN', 'EUR', 'USD', 'GBP', 'CHF'];
 
 export default function DepositSearch() {
   const [searchParams, setSearchParams] = useState({
@@ -38,14 +38,14 @@ export default function DepositSearch() {
     allowsOverdraft: "",
     bankId: ""
   });
-  
+
   const [formErrors, setFormErrors] = useState({
     currency: '',
     minAmount: '',
     maxAmount: '',
-    minTermMonths: '',
+    termMonths: '',
   });
-  
+
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -63,7 +63,7 @@ export default function DepositSearch() {
         setBanksLoading(false);
       }
     };
-    
+
     fetchBanks();
   }, []);
 
@@ -90,7 +90,7 @@ export default function DepositSearch() {
           return 'Моля, въведете валидна валута (BGN, EUR, USD и др.)';
         }
         return '';
-      
+
       case 'minAmount':
         if (value && (isNaN(value) || parseFloat(value) <= 0)) {
           return 'Моля, въведете положителна сума';
@@ -102,7 +102,7 @@ export default function DepositSearch() {
           return 'Минималната сума не може да бъде по-голяма от максималната';
         }
         return '';
-      
+
       case 'maxAmount':
         if (value && (isNaN(value) || parseFloat(value) <= 0)) {
           return 'Моля, въведете положителна сума';
@@ -114,7 +114,7 @@ export default function DepositSearch() {
           return 'Максималната сума не може да бъде по-малка от минималната';
         }
         return '';
-      
+
       case 'minTermMonths':
         if (value && (isNaN(value) || parseInt(value) <= 0)) {
           return 'Моля, въведете положителен брой месеци';
@@ -126,7 +126,7 @@ export default function DepositSearch() {
           return 'Максималният срок е 360 месеца (30 години)';
         }
         return '';
-      
+
       default:
         return '';
     }
@@ -134,19 +134,17 @@ export default function DepositSearch() {
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    
-    // Validate the field
+    setSearchParams(prev => ({
+      ...prev,
+      [id]: value
+    }));
+
     const error = validateField(id, value);
     setFormErrors(prev => ({
       ...prev,
       [id]: error
     }));
-    
-    // Update the field value
-    setSearchParams(prev => ({ 
-      ...prev, 
-      [id]: value 
-    }));
+
   };
 
   const handleRadioChange = (field, value) => {
@@ -156,15 +154,13 @@ export default function DepositSearch() {
   const validateForm = () => {
     const newErrors = {};
     let isValid = true;
-    
-    // Validate currency
+
     const currencyError = validateField('currency', searchParams.currency);
     if (currencyError) {
       newErrors.currency = currencyError;
       isValid = false;
     }
-    
-    // Validate minAmount if provided
+
     if (searchParams.minAmount) {
       const minAmountError = validateField('minAmount', searchParams.minAmount);
       if (minAmountError) {
@@ -172,8 +168,7 @@ export default function DepositSearch() {
         isValid = false;
       }
     }
-    
-    // Validate maxAmount if provided
+
     if (searchParams.maxAmount) {
       const maxAmountError = validateField('maxAmount', searchParams.maxAmount);
       if (maxAmountError) {
@@ -181,8 +176,7 @@ export default function DepositSearch() {
         isValid = false;
       }
     }
-    
-    // Validate minTermMonths if provided
+
     if (searchParams.minTermMonths) {
       const minTermError = validateField('minTermMonths', searchParams.minTermMonths);
       if (minTermError) {
@@ -190,7 +184,7 @@ export default function DepositSearch() {
         isValid = false;
       }
     }
-    
+
     setFormErrors(newErrors);
     return isValid;
   };
@@ -199,7 +193,7 @@ export default function DepositSearch() {
     if (!validateForm()) {
       return;
     }
-    
+
     setLoading(true);
     try {
       const params = Object.fromEntries(
@@ -208,7 +202,9 @@ export default function DepositSearch() {
           value === "" ? undefined : value
         ])
       );
-
+    if (params.type !== "TermDeposit") {
+        delete params.minTermMonths;
+    }
       const response = await axios.get("http://localhost:5122/deposits", { params });
       setResults(response.data);
     } catch (error) {
@@ -437,18 +433,18 @@ export default function DepositSearch() {
                       {DEPOSIT_TYPES[deposit.type] || "Unknown Type"}
                     </div>
                   </div>
-                  
+
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                       <p className="text-sm text-gray-500">Лихва</p>
                       <p className="font-medium">{deposit.interestRate}% ({INTEREST_TYPES[deposit.interestType]})</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Срок</p>
+                      <p className="text-sm text-gray-500">{deposit.type === 0 ? "Срок" : "Минимален срок"}</p>
                       <p className="font-medium">{deposit.termMonths} месеца</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Минимална сума</p>
+                      <p className="text-sm text-gray-500">Максимална сума</p>
                       <p className="font-medium">{deposit.amount} {deposit.currency}</p>
                     </div>
                     <div>

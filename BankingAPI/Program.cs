@@ -83,7 +83,7 @@ app.MapGet("/deposits", async (
     if (interestType.HasValue) query = query.Where(d => d.InterestType == interestType);
     if (minAmount.HasValue) query = query.Where(d => d.Amount >= minAmount);
     if (maxAmount.HasValue) query = query.Where(d => d.Amount <= maxAmount);
-    if (minTermMonths.HasValue) query = query.Where(d => d.TermMonths >= minTermMonths);
+    if (minTermMonths.HasValue && type.HasValue && type == DepositType.TermDeposit) query = query.Where(d => d.TermMonths == minTermMonths);
     if (allowsOverdraft.HasValue) query = query.Where(d => d.OverdraftAllowed == allowsOverdraft);
     if (bankId.HasValue) query = query.Where(d => d.BankId == bankId);
 

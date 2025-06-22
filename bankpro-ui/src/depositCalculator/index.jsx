@@ -38,6 +38,10 @@ export default function DepositCalculator() {
       const fetchDepositDetails = async () => {
         try {
           const response = await axios.get(`http://localhost:5122/deposits/${id}`);
+          setFormData(prev => ({
+            ...prev,
+            'durationMonths': response.data.termMonths
+          }));
           setDepositDetails(response.data);
         } catch (err) {
           console.error("Error fetching deposit details:", err);
@@ -49,19 +53,19 @@ export default function DepositCalculator() {
 
   const validateField = (name, value) => {
     let error = '';
-    
+
     if (name === 'principal') {
       if (isNaN(value) || value === '') {
         error = 'Моля, въведете валидна сума';
       } else if (value <= 0) {
         error = 'Сумата трябва да е положително число';
-      } else if (value > 10000000) {
-        error = 'Сумата не може да надвишава 10,000,000 лв';
+      } else if (value > depositDetails.amount) {
+        error = `Сумата не може да надвишава ${depositDetails.amount} лв`;
       } else if (!/^\d+(\.\d{1,2})?$/.test(value)) {
         error = 'Моля, въведете сума с максимум 2 десетични цифри';
       }
     }
-    
+
     if (name === 'durationMonths') {
       if (isNaN(value) || value === '') {
         error = 'Моля, въведете валиден срок';
@@ -71,53 +75,48 @@ export default function DepositCalculator() {
         error = 'Срокът трябва да е цяло число';
       } else if (value > 360) {
         error = 'Максималният срок е 360 месеца (30 години)';
-      } else if (depositDetails && depositDetails.minDurationMonths && value < depositDetails.minDurationMonths) {
-        error = `Минималният срок за този депозит е ${depositDetails.minDurationMonths} месеца`;
+      } else if (depositDetails && depositDetails.termMonths && value < depositDetails.termMonths) {
+        error = `Минималният срок за този депозит е ${depositDetails.termMonths} месеца`;
       } else if (depositDetails && depositDetails.maxDurationMonths && value > depositDetails.maxDurationMonths) {
         error = `Максималният срок за този депозит е ${depositDetails.maxDurationMonths} месеца`;
       }
     }
-    
+
     return error;
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
-    // Validate the field
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'durationMonths' ? parseInt(value) : parseFloat(value)
+    }));
+
+
     const error = validateField(name, value);
     setFormErrors(prev => ({
       ...prev,
       [name]: error
     }));
-    
-    // Only update form data if validation passes
-    if (!error) {
-      setFormData(prev => ({
-        ...prev,
-        [name]: name === 'durationMonths' ? parseInt(value) : parseFloat(value)
-      }));
-    }
   };
 
   const validateForm = () => {
     let isValid = true;
     const newErrors = {};
-    
-    // Validate principal
     const principalError = validateField('principal', formData.principal);
     if (principalError) {
       newErrors.principal = principalError;
       isValid = false;
     }
-    
-    // Validate duration
-    const durationError = validateField('durationMonths', formData.durationMonths);
-    if (durationError) {
-      newErrors.durationMonths = durationError;
-      isValid = false;
+
+    if (depositDetails.type !== 0) {
+      const durationError = validateField('durationMonths', formData.durationMonths);
+      if (durationError) {
+        newErrors.durationMonths = durationError;
+        isValid = false;
+      }
     }
-    
+
     setFormErrors(newErrors);
     return isValid;
   };
@@ -125,23 +124,20 @@ export default function DepositCalculator() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!id) return;
-    
-    // Validate the entire form before submission
     if (!validateForm()) {
       return;
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
     try {
       const params = new URLSearchParams({
         principal: formData.principal,
-        durationMonths: formData.durationMonths
+        durationMonths: depositDetails.type == 0 ? depositDetails.termMonths : formData.durationMonths
       }).toString();
 
       const response = await axios.get(`http://localhost:5122/deposits/${id}/calculate?${params}`);
-      
+
       setPaymentSchedule(response.data.paymentSchedule);
       setTotalAmount(response.data.maturityValue);
     } catch (err) {
@@ -163,12 +159,12 @@ export default function DepositCalculator() {
       valueColor: "text-green-600",
     },
     {
-      value: `${formData.durationMonths} месеца`,
+      value:  (depositDetails && depositDetails.type == 0) ? `${depositDetails.termMonths} месеца` : `${formData.durationMonths} месеца`,
       label: "Срок",
       valueColor: "text-purple-600",
     },
     {
-      value: totalAmount > 0 
+      value: totalAmount > 0
         ? `${totalAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} лв`
         : "-",
       label: "Обща сума",
@@ -211,7 +207,7 @@ export default function DepositCalculator() {
               type="number"
               id="principal"
               name="principal"
-              min="1"
+              min="0"
               step="0.01"
               value={formData.principal}
               onChange={handleInputChange}
@@ -222,7 +218,7 @@ export default function DepositCalculator() {
               <p className="mt-1 text-sm text-red-600">{formErrors.principal}</p>
             )}
           </div>
-          
+
           <div>
             <Label htmlFor="durationMonths" className="block text-sm font-medium text-gray-700 mb-1">
               Срок (месеци)
@@ -236,13 +232,14 @@ export default function DepositCalculator() {
               onChange={handleInputChange}
               className="w-full"
               required
+              disabled={depositDetails && depositDetails.type == 0}
             />
             {formErrors.durationMonths && (
               <p className="mt-1 text-sm text-red-600">{formErrors.durationMonths}</p>
             )}
           </div>
         </div>
-        
+
         <div className="mt-4">
           <Button
             type="submit"
@@ -252,7 +249,7 @@ export default function DepositCalculator() {
             {isLoading ? 'Изчисляване...' : 'Изчисли'}
           </Button>
         </div>
-        
+
         {error && (
           <div className="mt-3 text-sm text-red-600">
             Грешка: {error}
